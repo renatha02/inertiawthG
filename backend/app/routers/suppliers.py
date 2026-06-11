@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from .. import models, schemas
-from ..auth import get_current_user
+from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 def create_supplier(
     supplier_in: schemas.SupplierCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot manage suppliers
 ):
     supplier = models.Supplier(**supplier_in.dict())
     db.add(supplier)
@@ -39,7 +39,7 @@ def update_supplier(
     supplier_id: int,
     supplier_in: schemas.SupplierCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot edit suppliers
 ):
     supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
     if not supplier:
@@ -52,7 +52,11 @@ def update_supplier(
 
 
 @router.delete("/{supplier_id}", status_code=204)
-def delete_supplier(supplier_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def delete_supplier(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),  # ADMIN ONLY
+):
     supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")

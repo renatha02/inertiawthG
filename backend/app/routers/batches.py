@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from .. import models, schemas
-from ..auth import get_current_user
+from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
 
 router = APIRouter(prefix="/batches", tags=["Batches"])
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/batches", tags=["Batches"])
 def create_batch(
     batch_in: schemas.BatchCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot add stock
 ):
     # Ensure the drug exists and is active
     drug = db.query(models.Drug).filter(models.Drug.id == batch_in.drug_id, models.Drug.is_active == True).first()
@@ -44,7 +44,7 @@ def update_batch(
     batch_id: int,
     batch_in: schemas.BatchUpdate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot edit batches
 ):
     batch = db.query(models.Batch).filter(models.Batch.id == batch_id).first()
     if not batch:
@@ -57,7 +57,11 @@ def update_batch(
 
 
 @router.delete("/{batch_id}", status_code=204)
-def delete_batch(batch_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def delete_batch(
+    batch_id: int,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),  # ADMIN ONLY
+):
     batch = db.query(models.Batch).filter(models.Batch.id == batch_id).first()
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")

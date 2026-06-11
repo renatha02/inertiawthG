@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from .. import models, schemas
-from ..auth import get_current_user
+from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
 
 router = APIRouter(prefix="/drugs", tags=["Drugs"])
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/drugs", tags=["Drugs"])
 def create_drug(
     drug_in: schemas.DrugCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot add drugs
 ):
     drug = models.Drug(**drug_in.dict())
     db.add(drug)
@@ -39,7 +39,7 @@ def update_drug(
     drug_id: int,
     drug_in: schemas.DrugUpdate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot edit drugs
 ):
     drug = db.query(models.Drug).filter(models.Drug.id == drug_id).first()
     if not drug:
@@ -52,8 +52,12 @@ def update_drug(
 
 
 @router.delete("/{drug_id}", status_code=204)
-def soft_delete_drug(drug_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    """Soft-deletes a drug by setting is_active to False."""
+def soft_delete_drug(
+    drug_id: int,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),   # ADMIN ONLY
+):
+    """Soft-deletes a drug by setting is_active to False. Admin only."""
     drug = db.query(models.Drug).filter(models.Drug.id == drug_id).first()
     if not drug:
         raise HTTPException(status_code=404, detail="Drug not found")

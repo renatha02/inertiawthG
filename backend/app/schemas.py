@@ -38,6 +38,12 @@ class UserOut(BaseModel):
     class Config:
         from_attributes = True
 
+class UserUpdate(BaseModel):
+    """Admin-only: update another user's role or phone."""
+    name: Optional[str] = None
+    role: Optional[RoleEnum] = None
+    phone: Optional[str] = None
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

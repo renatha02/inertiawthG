@@ -55,7 +55,21 @@ def get_current_user(
     return user
 
 
-def require_admin(current_user: models.User = Depends(get_current_user)):
+def require_admin(current_user: models.User = Depends(get_current_user)) -> models.User:
+    """Only admin can access this route."""
     if current_user.role != models.RoleEnum.admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: admin role required.",
+        )
+    return current_user
+
+
+def require_pharmacist_or_above(current_user: models.User = Depends(get_current_user)) -> models.User:
+    """Admin and Pharmacist can access; Cashier cannot."""
+    if current_user.role == models.RoleEnum.cashier:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: pharmacist or admin role required.",
+        )
     return current_user
