@@ -1,0 +1,104 @@
+-- RENATHA Pharmacy Inventory & Expiry Alert System
+-- Database Schema Definition (MySQL)
+
+CREATE DATABASE IF NOT EXISTS `renatha_db`;
+USE `renatha_db`;
+
+-- 1. Users Table
+CREATE TABLE IF NOT EXISTS `users` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `email` VARCHAR(255) NOT NULL UNIQUE,
+    `password` VARCHAR(255) NOT NULL,
+    `role` ENUM('admin', 'pharmacist', 'cashier') NOT NULL DEFAULT 'cashier',
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Suppliers Table
+CREATE TABLE IF NOT EXISTS `suppliers` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `contact_person` VARCHAR(255) DEFAULT NULL,
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `email` VARCHAR(255) DEFAULT NULL,
+    `address` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Drugs Table
+CREATE TABLE IF NOT EXISTS `drugs` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `category` VARCHAR(100) DEFAULT NULL,
+    `unit` VARCHAR(50) DEFAULT NULL,
+    `reorder_level` INT NOT NULL DEFAULT 10,
+    `is_active` BOOLEAN NOT NULL DEFAULT TRUE,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Batches Table
+CREATE TABLE IF NOT EXISTS `batches` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `drug_id` BIGINT UNSIGNED NOT NULL,
+    `supplier_id` BIGINT UNSIGNED DEFAULT NULL,
+    `batch_number` VARCHAR(100) NOT NULL,
+    `quantity` INT NOT NULL DEFAULT 0,
+    `buying_price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `selling_price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `expiry_date` DATE NOT NULL,
+    `manufacture_date` DATE DEFAULT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`drug_id`) REFERENCES `drugs`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`supplier_id`) REFERENCES `suppliers`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Sales Table
+CREATE TABLE IF NOT EXISTS `sales` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT UNSIGNED NOT NULL,
+    `drug_id` BIGINT UNSIGNED NOT NULL,
+    `total_quantity` INT NOT NULL,
+    `total_price` DECIMAL(10,2) NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT,
+    FOREIGN KEY (`drug_id`) REFERENCES `drugs`(`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. Sale Batch Allocations Table (For FIFO tracking)
+CREATE TABLE IF NOT EXISTS `sale_batch_allocations` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `sale_id` BIGINT UNSIGNED NOT NULL,
+    `batch_id` BIGINT UNSIGNED NOT NULL,
+    `quantity_deducted` INT NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`sale_id`) REFERENCES `sales`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`batch_id`) REFERENCES `batches`(`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7. Alerts Table
+CREATE TABLE IF NOT EXISTS `alerts` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `drug_id` BIGINT UNSIGNED NOT NULL,
+    `batch_id` BIGINT UNSIGNED DEFAULT NULL,
+    `type` ENUM('expiry', 'low_stock') NOT NULL,
+    `message` TEXT NOT NULL,
+    `status` ENUM('unread', 'read') NOT NULL DEFAULT 'unread',
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`drug_id`) REFERENCES `drugs`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`batch_id`) REFERENCES `batches`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
