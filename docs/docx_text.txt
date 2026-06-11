@@ -1,0 +1,32 @@
+Title Page: PHARMACY INVENTORY & EXPIRY ALERT SYSTEM
+Abstract
+This project proposes the design and development of a Pharmacy Inventory & Expiry Alert System, aimed at addressing critical challenges faced by small and medium-sized pharmacies in East Africa. Many pharmacies operate without reliable inventory systems, leading to frequent sale of expired drugs, poor stock management, and shortages of essential medicines.
+The proposed system leverages modern web technologies such as Laravel for backend development and React.js for frontend implementation, combined with SMS and USSD capabilities powered by Africa's Talking APIs to ensure accessibility in low-connectivity environments.
+The system will provide real-time inventory tracking, expiry date alerts, low-stock notifications, and simple sales management. It is designed to be user-friendly, scalable, and suitable for low-tech environments.
+Ultimately, the system aims to improve patient safety, enhance pharmacy efficiency, and reduce losses caused by expired or unavailable medicines.
+Introduction
+Effective pharmaceutical inventory management is essential for ensuring drug safety, regulatory compliance, and efficient healthcare service delivery. In many developing regions, particularly in East Africa, pharmacies still rely on manual record-keeping or outdated systems.
+With the increasing availability of affordable digital technologies, there is an opportunity to transform pharmacy operations through simple yet powerful software solutions. This project introduces a digital system tailored specifically for pharmacies operating in low-resource environments, focusing on usability, affordability, and accessibility.
+General Objective
+To develop a digital pharmacy inventory system that improves drug safety and inventory efficiency in low-resource environments.
+Specific Objectives
+To implement automated expiry tracking and alert mechanisms 
+To provide real-time inventory monitoring 
+To enable low-stock notifications 
+To integrate SMS and USSD functionality for offline access 
+To develop a user-friendly interface for pharmacy staff 
+To maintain accurate sales and inventory records 
+
+ Technologies Used
+Backend: 
+Laravel 
+Handles business logic, APIs, and database operations 
+Frontend: 
+React.js 
+Provides an interactive and responsive user interface 
+Communication APIs: 
+Africa's Talking 
+Enables SMS alerts and USSD interaction 
+Database: 
+MySQL / PostgreSQL 
+
