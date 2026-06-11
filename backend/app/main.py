@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from . import models
 from .database import engine
-from .routers import auth, drugs, batches, sales, alerts, suppliers, dashboard
+from .routers import auth, drugs, batches, sales, alerts, suppliers, dashboard, ussd
 from .scheduler import check_expiry_and_low_stock
 import logging
 
@@ -53,6 +53,7 @@ app.include_router(batches.router,   prefix="/api")
 app.include_router(sales.router,     prefix="/api")
 app.include_router(alerts.router,    prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(ussd.router,     prefix="/api")
 
 
 @app.get("/", tags=["Health"])

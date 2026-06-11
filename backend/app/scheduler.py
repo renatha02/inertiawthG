@@ -12,9 +12,24 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from . import models
 from .database import SessionLocal
+from .sms import send_sms
 import logging
 
 logger = logging.getLogger("renatha.scheduler")
+
+
+def _get_admin_phones(db: Session) -> list[str]:
+    """Return phone numbers of all admin and pharmacist users for SMS alerts."""
+    users = (
+        db.query(models.User)
+        .filter(
+            models.User.role.in_([models.RoleEnum.admin, models.RoleEnum.pharmacist]),
+            models.User.phone.isnot(None),
+        )
+        .all()
+    )
+    return [u.phone for u in users if u.phone]
+
 
 
 def check_expiry_and_low_stock():
@@ -59,19 +74,22 @@ def _check_expiry(db: Session):
                 .first()
             )
             if not existing:
+                msg = (
+                    f"[RENATHA ALERT] Batch '{batch.batch_number}' expires in {days} day(s) "
+                    f"on {batch.expiry_date}. Current stock: {batch.quantity} units."
+                )
                 alert = models.Alert(
                     drug_id=batch.drug_id,
                     batch_id=batch.id,
                     type=models.AlertTypeEnum.expiry,
-                    message=(
-                        f"Batch '{batch.batch_number}' for drug ID {batch.drug_id} "
-                        f"expires in {days} day(s) on {batch.expiry_date}. "
-                        f"Current stock: {batch.quantity} units."
-                    ),
+                    message=msg,
                     status=models.AlertStatusEnum.unread,
                 )
                 db.add(alert)
-                logger.info(f"  ⚠️  Expiry alert created: Batch {batch.batch_number}, {days} days left.")
+                db.flush()  # Persist alert before SMS
+                phones = _get_admin_phones(db)
+                send_sms(phones, msg)
+                logger.info(f"  ⚠️  Expiry alert created & SMS sent: Batch {batch.batch_number}, {days} days left.")
 
 
 def _check_low_stock(db: Session):
@@ -101,16 +119,20 @@ def _check_low_stock(db: Session):
                 .first()
             )
             if not existing:
+                msg = (
+                    f"[RENATHA ALERT] Drug '{drug.name}' is running low. "
+                    f"Total stock: {total_qty} {drug.unit}(s). "
+                    f"Reorder level: {drug.reorder_level}. Please restock soon."
+                )
                 alert = models.Alert(
                     drug_id=drug_id,
                     batch_id=None,
                     type=models.AlertTypeEnum.low_stock,
-                    message=(
-                        f"Drug '{drug.name}' is running low. "
-                        f"Total stock: {total_qty} {drug.unit}(s). "
-                        f"Reorder level: {drug.reorder_level}."
-                    ),
+                    message=msg,
                     status=models.AlertStatusEnum.unread,
                 )
                 db.add(alert)
-                logger.info(f"  📉 Low-stock alert created: {drug.name} ({total_qty} remaining).")
+                db.flush()  # Persist alert before SMS
+                phones = _get_admin_phones(db)
+                send_sms(phones, msg)
+                logger.info(f"  📉 Low-stock alert created & SMS sent: {drug.name} ({total_qty} remaining).")
