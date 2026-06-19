@@ -5,6 +5,7 @@ from .. import models, schemas
 from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
 from ..common import pagination_params, paginated_response
+from ..audit import log_activity
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
@@ -13,10 +14,12 @@ router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 def create_supplier(
     supplier_in: schemas.SupplierCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),
+    current_user: models.User = Depends(require_pharmacist_or_above),
 ):
     supplier = models.Supplier(**supplier_in.dict())
     db.add(supplier)
+    db.flush()
+    log_activity(db, current_user.id, "CREATE", "Supplier", supplier.id, supplier_in.dict())
     db.commit()
     db.refresh(supplier)
     return supplier
@@ -50,13 +53,15 @@ def update_supplier(
     supplier_id: int,
     supplier_in: schemas.SupplierCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot edit suppliers
+    current_user: models.User = Depends(require_pharmacist_or_above),
 ):
     supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
-    for key, value in supplier_in.dict(exclude_unset=True).items():
+    updated = supplier_in.dict(exclude_unset=True)
+    for key, value in updated.items():
         setattr(supplier, key, value)
+    log_activity(db, current_user.id, "UPDATE", "Supplier", supplier_id, {"changes": updated})
     db.commit()
     db.refresh(supplier)
     return supplier
@@ -66,10 +71,11 @@ def update_supplier(
 def delete_supplier(
     supplier_id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_admin),  # ADMIN ONLY
+    current_user: models.User = Depends(require_admin),
 ):
     supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
+    log_activity(db, current_user.id, "DELETE", "Supplier", supplier_id, {"name": supplier.name})
     db.delete(supplier)
     db.commit()

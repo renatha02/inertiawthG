@@ -6,6 +6,7 @@ from .. import models, schemas
 from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
 from ..common import pagination_params, paginated_response
+from ..audit import log_activity
 
 router = APIRouter(prefix="/batches", tags=["Batches"])
 
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/batches", tags=["Batches"])
 def create_batch(
     batch_in: schemas.BatchCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),
+    current_user: models.User = Depends(require_pharmacist_or_above),
 ):
     drug = db.query(models.Drug).filter(models.Drug.id == batch_in.drug_id, models.Drug.is_active == True).first()
     if not drug:
@@ -22,6 +23,8 @@ def create_batch(
 
     batch = models.Batch(**batch_in.dict())
     db.add(batch)
+    db.flush()
+    log_activity(db, current_user.id, "CREATE", "Batch", batch.id, batch_in.dict())
     db.commit()
     db.refresh(batch)
     return batch
@@ -70,13 +73,15 @@ def update_batch(
     batch_id: int,
     batch_in: schemas.BatchUpdate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot edit batches
+    current_user: models.User = Depends(require_pharmacist_or_above),
 ):
     batch = db.query(models.Batch).filter(models.Batch.id == batch_id).first()
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
-    for key, value in batch_in.dict(exclude_unset=True).items():
+    updated = batch_in.dict(exclude_unset=True)
+    for key, value in updated.items():
         setattr(batch, key, value)
+    log_activity(db, current_user.id, "UPDATE", "Batch", batch_id, {"changes": updated})
     db.commit()
     db.refresh(batch)
     return batch
@@ -86,10 +91,11 @@ def update_batch(
 def delete_batch(
     batch_id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_admin),  # ADMIN ONLY
+    current_user: models.User = Depends(require_admin),
 ):
     batch = db.query(models.Batch).filter(models.Batch.id == batch_id).first()
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
+    log_activity(db, current_user.id, "DELETE", "Batch", batch_id, {"batch_number": batch.batch_number})
     db.delete(batch)
     db.commit()

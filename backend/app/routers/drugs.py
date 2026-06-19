@@ -5,6 +5,7 @@ from .. import models, schemas
 from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
 from ..common import pagination_params, paginated_response
+from ..audit import log_activity
 
 router = APIRouter(prefix="/drugs", tags=["Drugs"])
 
@@ -13,10 +14,12 @@ router = APIRouter(prefix="/drugs", tags=["Drugs"])
 def create_drug(
     drug_in: schemas.DrugCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),
+    current_user: models.User = Depends(require_pharmacist_or_above),
 ):
     drug = models.Drug(**drug_in.dict())
     db.add(drug)
+    db.flush()
+    log_activity(db, current_user.id, "CREATE", "Drug", drug.id, drug_in.dict())
     db.commit()
     db.refresh(drug)
     return drug
@@ -56,13 +59,15 @@ def update_drug(
     drug_id: int,
     drug_in: schemas.DrugUpdate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot edit drugs
+    current_user: models.User = Depends(require_pharmacist_or_above),
 ):
     drug = db.query(models.Drug).filter(models.Drug.id == drug_id).first()
     if not drug:
         raise HTTPException(status_code=404, detail="Drug not found")
-    for key, value in drug_in.dict(exclude_unset=True).items():
+    updated = drug_in.dict(exclude_unset=True)
+    for key, value in updated.items():
         setattr(drug, key, value)
+    log_activity(db, current_user.id, "UPDATE", "Drug", drug_id, {"changes": updated})
     db.commit()
     db.refresh(drug)
     return drug
@@ -72,11 +77,11 @@ def update_drug(
 def soft_delete_drug(
     drug_id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_admin),   # ADMIN ONLY
+    current_user: models.User = Depends(require_admin),
 ):
-    """Soft-deletes a drug by setting is_active to False. Admin only."""
     drug = db.query(models.Drug).filter(models.Drug.id == drug_id).first()
     if not drug:
         raise HTTPException(status_code=404, detail="Drug not found")
     drug.is_active = False
+    log_activity(db, current_user.id, "DELETE", "Drug", drug_id)
     db.commit()

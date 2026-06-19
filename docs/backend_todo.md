@@ -23,11 +23,11 @@
 
 ---
 
-## Medium Priority
+## ✅ Medium Priority (implemented)
 
-5. **Refresh tokens / logout** — Implement token refresh endpoint and server-side blacklist/revocation.
-6. **Audit log** — `activity_log` table tracking create/update/delete actions per user.
-7. **Password reset flow** — Forgot password → email token → reset endpoint.
+5. **Refresh tokens / logout** — Token refresh endpoint with rotation; logout revokes refresh token.
+6. **Audit log** — `activity_log` table tracking CREATE/UPDATE/DELETE per user across all routers.
+7. **Password reset flow** — `POST /auth/forgot-password` (sends SMS token) + `POST /auth/reset-password`.
 
 ## Minor / Nice-to-have
 

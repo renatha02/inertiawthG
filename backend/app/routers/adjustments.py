@@ -4,6 +4,7 @@ from .. import models, schemas
 from ..auth import get_current_user, require_pharmacist_or_above
 from ..database import get_db
 from ..common import pagination_params, paginated_response
+from ..audit import log_activity
 
 router = APIRouter(prefix="/adjustments", tags=["Stock Adjustments"])
 
@@ -35,6 +36,8 @@ def create_adjustment(
         notes=adj_in.notes,
     )
     db.add(adjustment)
+    db.flush()
+    log_activity(db, current_user.id, "CREATE", "StockAdjustment", adjustment.id, adj_in.dict())
     db.commit()
     db.refresh(adjustment)
     return adjustment

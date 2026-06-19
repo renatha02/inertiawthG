@@ -8,6 +8,7 @@ from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
 from ..common import pagination_params, paginated_response
+from ..audit import log_activity
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
 
@@ -72,6 +73,12 @@ def create_sale(
             quantity_deducted=alloc["deducted"],
         ))
 
+    log_activity(db, current_user.id, "CREATE", "Sale", sale.id, {
+        "drug_id": sale_in.drug_id,
+        "total_quantity": sale_in.total_quantity,
+        "total_price": str(total_price),
+        "allocations": [{"batch_id": a["batch"].id, "qty": a["deducted"]} for a in allocations],
+    })
     db.commit()
     db.refresh(sale)
     return sale
