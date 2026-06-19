@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Optional
+from datetime import date
 from .. import models, schemas
 from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
+from ..common import pagination_params, paginated_response
 
 router = APIRouter(prefix="/batches", tags=["Batches"])
 
@@ -12,13 +14,12 @@ router = APIRouter(prefix="/batches", tags=["Batches"])
 def create_batch(
     batch_in: schemas.BatchCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot add stock
+    _: models.User = Depends(require_pharmacist_or_above),
 ):
-    # Ensure the drug exists and is active
     drug = db.query(models.Drug).filter(models.Drug.id == batch_in.drug_id, models.Drug.is_active == True).first()
     if not drug:
         raise HTTPException(status_code=404, detail="Active drug not found")
-    
+
     batch = models.Batch(**batch_in.dict())
     db.add(batch)
     db.commit()
@@ -26,9 +27,34 @@ def create_batch(
     return batch
 
 
-@router.get("/", response_model=List[schemas.BatchOut])
-def list_batches(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    return db.query(models.Batch).order_by(models.Batch.expiry_date.asc()).all()
+@router.get("/")
+def list_batches(
+    drug_id: Optional[int] = Query(None, description="Filter by drug ID"),
+    supplier_id: Optional[int] = Query(None, description="Filter by supplier ID"),
+    search: Optional[str] = Query(None, description="Search by batch number"),
+    expiry_before: Optional[date] = Query(None, description="Filter: expiry on or before this date"),
+    expiry_after: Optional[date] = Query(None, description="Filter: expiry on or after this date"),
+    in_stock_only: bool = Query(False, description="Only show batches with quantity > 0"),
+    pagination: dict = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    query = db.query(models.Batch)
+    if drug_id:
+        query = query.filter(models.Batch.drug_id == drug_id)
+    if supplier_id:
+        query = query.filter(models.Batch.supplier_id == supplier_id)
+    if search:
+        query = query.filter(models.Batch.batch_number.ilike(f"%{search}%"))
+    if expiry_before:
+        query = query.filter(models.Batch.expiry_date <= expiry_before)
+    if expiry_after:
+        query = query.filter(models.Batch.expiry_date >= expiry_after)
+    if in_stock_only:
+        query = query.filter(models.Batch.quantity > 0)
+    query = query.order_by(models.Batch.expiry_date.asc())
+    items, total = paginated_response(query, pagination["skip"], pagination["limit"])
+    return {"items": [schemas.BatchOut.from_orm(i) for i in items], "total": total, **pagination}
 
 
 @router.get("/{batch_id}", response_model=schemas.BatchOut)

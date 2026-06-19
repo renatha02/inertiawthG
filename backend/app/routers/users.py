@@ -5,23 +5,35 @@ Endpoints for managing pharmacy staff accounts.
 All routes require admin role.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Optional
 from .. import models, schemas
 from ..auth import require_admin
 from ..database import get_db
+from ..common import pagination_params, paginated_response
 
 router = APIRouter(prefix="/users", tags=["User Management"])
 
 
-@router.get("/", response_model=List[schemas.UserOut])
+@router.get("/")
 def list_users(
+    search: Optional[str] = Query(None, description="Search by name or email"),
+    role: Optional[schemas.RoleEnum] = Query(None, description="Filter by role"),
+    pagination: dict = Depends(pagination_params),
     db: Session = Depends(get_db),
     _: models.User = Depends(require_admin),
 ):
-    """List all staff accounts. Admin only."""
-    return db.query(models.User).order_by(models.User.created_at.desc()).all()
+    query = db.query(models.User)
+    if search:
+        query = query.filter(
+            models.User.name.ilike(f"%{search}%") | models.User.email.ilike(f"%{search}%")
+        )
+    if role:
+        query = query.filter(models.User.role == role)
+    query = query.order_by(models.User.created_at.desc())
+    items, total = paginated_response(query, pagination["skip"], pagination["limit"])
+    return {"items": [schemas.UserOut.from_orm(i) for i in items], "total": total, **pagination}
 
 
 @router.get("/{user_id}", response_model=schemas.UserOut)

@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from sqlalchemy import func
+from typing import Optional
 from decimal import Decimal
+from datetime import date
 from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
+from ..common import pagination_params, paginated_response
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
 
@@ -74,9 +77,28 @@ def create_sale(
     return sale
 
 
-@router.get("/", response_model=List[schemas.SaleOut])
-def list_sales(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    return db.query(models.Sale).order_by(models.Sale.created_at.desc()).all()
+@router.get("/")
+def list_sales(
+    drug_id: Optional[int] = Query(None, description="Filter by drug ID"),
+    user_id: Optional[int] = Query(None, description="Filter by cashier ID"),
+    date_from: Optional[date] = Query(None, description="Start date (inclusive)"),
+    date_to: Optional[date] = Query(None, description="End date (inclusive)"),
+    pagination: dict = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    query = db.query(models.Sale)
+    if drug_id:
+        query = query.filter(models.Sale.drug_id == drug_id)
+    if user_id:
+        query = query.filter(models.Sale.user_id == user_id)
+    if date_from:
+        query = query.filter(func.date(models.Sale.created_at) >= date_from)
+    if date_to:
+        query = query.filter(func.date(models.Sale.created_at) <= date_to)
+    query = query.order_by(models.Sale.created_at.desc())
+    items, total = paginated_response(query, pagination["skip"], pagination["limit"])
+    return {"items": [schemas.SaleOut.from_orm(i) for i in items], "total": total, **pagination}
 
 
 @router.get("/{sale_id}", response_model=schemas.SaleOut)

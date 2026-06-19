@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Optional
 from .. import models, schemas
 from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
+from ..common import pagination_params, paginated_response
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 def create_supplier(
     supplier_in: schemas.SupplierCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot manage suppliers
+    _: models.User = Depends(require_pharmacist_or_above),
 ):
     supplier = models.Supplier(**supplier_in.dict())
     db.add(supplier)
@@ -21,9 +22,19 @@ def create_supplier(
     return supplier
 
 
-@router.get("/", response_model=List[schemas.SupplierOut])
-def list_suppliers(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    return db.query(models.Supplier).all()
+@router.get("/")
+def list_suppliers(
+    search: Optional[str] = Query(None, description="Search by supplier name"),
+    pagination: dict = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    query = db.query(models.Supplier)
+    if search:
+        query = query.filter(models.Supplier.name.ilike(f"%{search}%"))
+    query = query.order_by(models.Supplier.name.asc())
+    items, total = paginated_response(query, pagination["skip"], pagination["limit"])
+    return {"items": [schemas.SupplierOut.from_orm(i) for i in items], "total": total, **pagination}
 
 
 @router.get("/{supplier_id}", response_model=schemas.SupplierOut)

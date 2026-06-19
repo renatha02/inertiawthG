@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Optional
 from .. import models, schemas
 from ..auth import get_current_user, require_admin, require_pharmacist_or_above
 from ..database import get_db
+from ..common import pagination_params, paginated_response
 
 router = APIRouter(prefix="/drugs", tags=["Drugs"])
 
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/drugs", tags=["Drugs"])
 def create_drug(
     drug_in: schemas.DrugCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_pharmacist_or_above),  # cashier cannot add drugs
+    _: models.User = Depends(require_pharmacist_or_above),
 ):
     drug = models.Drug(**drug_in.dict())
     db.add(drug)
@@ -21,9 +22,25 @@ def create_drug(
     return drug
 
 
-@router.get("/", response_model=List[schemas.DrugOut])
-def list_drugs(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    return db.query(models.Drug).filter(models.Drug.is_active == True).all()
+@router.get("/")
+def list_drugs(
+    search: Optional[str] = Query(None, description="Search by drug name"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    include_inactive: bool = Query(False, description="Include soft-deleted drugs"),
+    pagination: dict = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    query = db.query(models.Drug)
+    if not include_inactive:
+        query = query.filter(models.Drug.is_active == True)
+    if search:
+        query = query.filter(models.Drug.name.ilike(f"%{search}%"))
+    if category:
+        query = query.filter(models.Drug.category == category)
+    query = query.order_by(models.Drug.name.asc())
+    items, total = paginated_response(query, pagination["skip"], pagination["limit"])
+    return {"items": [schemas.DrugOut.from_orm(i) for i in items], "total": total, **pagination}
 
 
 @router.get("/{drug_id}", response_model=schemas.DrugOut)

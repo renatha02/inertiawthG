@@ -129,3 +129,22 @@ class Alert(Base):
 
     drug = relationship("Drug", back_populates="alerts")
     batch = relationship("Batch", back_populates="alerts")
+
+
+class StockAdjustment(Base):
+    __tablename__ = "stock_adjustments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    drug_id = Column(Integer, ForeignKey("drugs.id", ondelete="CASCADE"), nullable=False)
+    batch_id = Column(Integer, ForeignKey("batches.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    quantity_change = Column(Integer, nullable=False)  # negative for write-off, positive for correction
+    reason = Column(String(255), nullable=False)
+    notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    drug = relationship("Drug")
+    batch = relationship("Batch")
+    user = relationship("User")

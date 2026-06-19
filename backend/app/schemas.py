@@ -1,7 +1,18 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, Generic, TypeVar
 from datetime import date, datetime
 from enum import Enum
+from fastapi import Query
+
+
+# ─── Pagination ─────────────────────────────────────────────────────────────────
+T = TypeVar("T")
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: list[T]
+    total: int
+    skip: int
+    limit: int
 
 
 # ─── Enums ─────────────────────────────────────────────────────────────────────
@@ -152,6 +163,48 @@ class SaleOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ─── Stock Adjustment Schemas ─────────────────────────────────────────────────────
+class StockAdjustmentCreate(BaseModel):
+    drug_id: int
+    batch_id: Optional[int] = None
+    quantity_change: int
+    reason: str
+    notes: Optional[str] = None
+
+class StockAdjustmentOut(BaseModel):
+    id: int
+    drug_id: int
+    batch_id: Optional[int]
+    user_id: int
+    quantity_change: int
+    reason: str
+    notes: Optional[str]
+    created_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Report Schemas ────────────────────────────────────────────────────────────────
+class RevenueReport(BaseModel):
+    period: str
+    total_revenue: float
+    total_sales: int
+    total_items_sold: int
+
+class TopDrug(BaseModel):
+    drug_id: int
+    drug_name: str
+    total_quantity_sold: int
+    total_revenue: float
+
+class ProfitSummary(BaseModel):
+    total_revenue: float
+    total_cost: float
+    total_profit: float
+    margin_percent: float
 
 
 # ─── Alert Schemas ────────────────────────────────────────────────────────────────
