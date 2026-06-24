@@ -51,20 +51,36 @@ def get_dashboard_stats(
         .count()
     )
 
-    # Expiry windows
+    # Expiry windows — count distinct DRUGS (not raw batch rows)
+    # so "3 drugs expiring in 7 days" means 3 products, regardless of batch count.
     expiring_in_7_days = (
-        db.query(models.Batch)
-        .filter(models.Batch.quantity > 0, models.Batch.expiry_date <= today + timedelta(days=7))
+        db.query(models.Batch.drug_id)
+        .filter(
+            models.Batch.quantity > 0,
+            models.Batch.expiry_date <= today + timedelta(days=7),
+            models.Batch.expiry_date >= today,
+        )
+        .distinct()
         .count()
     )
     expiring_in_14_days = (
-        db.query(models.Batch)
-        .filter(models.Batch.quantity > 0, models.Batch.expiry_date <= today + timedelta(days=14))
+        db.query(models.Batch.drug_id)
+        .filter(
+            models.Batch.quantity > 0,
+            models.Batch.expiry_date <= today + timedelta(days=14),
+            models.Batch.expiry_date >= today,
+        )
+        .distinct()
         .count()
     )
     expiring_in_30_days = (
-        db.query(models.Batch)
-        .filter(models.Batch.quantity > 0, models.Batch.expiry_date <= today + timedelta(days=30))
+        db.query(models.Batch.drug_id)
+        .filter(
+            models.Batch.quantity > 0,
+            models.Batch.expiry_date <= today + timedelta(days=30),
+            models.Batch.expiry_date >= today,
+        )
+        .distinct()
         .count()
     )
 

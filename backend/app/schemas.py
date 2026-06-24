@@ -85,6 +85,14 @@ class SupplierCreate(BaseModel):
     email: Optional[str] = None
     address: Optional[str] = None
 
+class SupplierUpdate(BaseModel):
+    """Partial update — only send the fields you want to change."""
+    name: Optional[str] = None
+    contact_person: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+
 class SupplierOut(SupplierCreate):
     id: int
     created_at: Optional[datetime]

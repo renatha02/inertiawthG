@@ -51,7 +51,7 @@ def get_supplier(supplier_id: int, db: Session = Depends(get_db), _: models.User
 @router.put("/{supplier_id}", response_model=schemas.SupplierOut)
 def update_supplier(
     supplier_id: int,
-    supplier_in: schemas.SupplierCreate,
+    supplier_in: schemas.SupplierUpdate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_pharmacist_or_above),
 ):

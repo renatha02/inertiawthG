@@ -12,8 +12,11 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-# Create all tables (dev convenience — production uses Alembic)
-models.Base.metadata.create_all(bind=engine)
+# ── Table creation ─────────────────────────────────────────────────────────────
+# Do NOT call models.Base.metadata.create_all() here in production.
+# Schema is managed exclusively by Alembic migrations.
+# Run:  alembic upgrade head
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 @asynccontextmanager

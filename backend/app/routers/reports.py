@@ -1,14 +1,42 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import List
 from .. import models, schemas
 from ..auth import get_current_user
-from ..database import get_db
+from ..database import get_db, engine
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
+
+
+def _period_expr(period: str):
+    """
+    Return a SQL expression that groups a datetime column into the requested
+    period bucket.  Works for both SQLite and MySQL/MariaDB.
+    """
+    dialect = engine.dialect.name  # 'sqlite' | 'mysql' | 'postgresql' …
+
+    if period == "daily":
+        return func.date(models.Sale.created_at)
+
+    if period == "weekly":
+        if dialect == "sqlite":
+            # SQLite: ISO year-week  e.g. "2024-W03"
+            return func.strftime("%Y-W%W", models.Sale.created_at)
+        else:
+            # MySQL / MariaDB
+            return func.date_format(models.Sale.created_at, "%x-W%v")
+
+    if period == "monthly":
+        if dialect == "sqlite":
+            return func.strftime("%Y-%m", models.Sale.created_at)
+        else:
+            return func.date_format(models.Sale.created_at, "%Y-%m")
+
+    # fallback — daily
+    return func.date(models.Sale.created_at)
 
 
 @router.get("/revenue", response_model=List[schemas.RevenueReport])
@@ -18,61 +46,34 @@ def revenue_by_period(
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
+    """
+    Revenue grouped by period (daily / weekly / monthly).
+    Aggregation is performed in SQL — no Python-side accumulation.
+    """
     cutoff = date.today() - timedelta(days=days)
-    sales = (
+    bucket = _period_expr(period)
+
+    rows = (
         db.query(
-            func.date(models.Sale.created_at).label("day"),
+            bucket.label("period"),
             func.sum(models.Sale.total_price).label("revenue"),
             func.count(models.Sale.id).label("num_sales"),
             func.sum(models.Sale.total_quantity).label("items_sold"),
         )
         .filter(func.date(models.Sale.created_at) >= cutoff)
-        .group_by(func.date(models.Sale.created_at))
-        .order_by(func.date(models.Sale.created_at).desc())
+        .group_by(bucket)
+        .order_by(bucket.desc())
         .all()
     )
 
-    if period == "weekly":
-        return _aggregate_weekly(sales)
-    elif period == "monthly":
-        return _aggregate_monthly(sales)
     return [
         schemas.RevenueReport(
-            period=str(row.day),
-            total_revenue=float(row.revenue),
+            period=str(row.period),
+            total_revenue=float(row.revenue or 0),
             total_sales=row.num_sales,
             total_items_sold=row.items_sold,
         )
-        for row in sales
-    ]
-
-
-def _aggregate_weekly(sales):
-    from collections import defaultdict
-    weeks = defaultdict(lambda: {"revenue": Decimal("0"), "sales": 0, "items": 0})
-    for row in sales:
-        wk = row.day.isocalendar()
-        key = f"{wk[0]}-W{wk[1]:02d}"
-        weeks[key]["revenue"] += row.revenue
-        weeks[key]["sales"] += row.num_sales
-        weeks[key]["items"] += row.items_sold
-    return [
-        schemas.RevenueReport(period=k, total_revenue=float(v["revenue"]), total_sales=v["sales"], total_items_sold=v["items"])
-        for k, v in sorted(weeks.items(), reverse=True)
-    ]
-
-
-def _aggregate_monthly(sales):
-    from collections import defaultdict
-    months = defaultdict(lambda: {"revenue": Decimal("0"), "sales": 0, "items": 0})
-    for row in sales:
-        key = row.day.strftime("%Y-%m")
-        months[key]["revenue"] += row.revenue
-        months[key]["sales"] += row.num_sales
-        months[key]["items"] += row.items_sold
-    return [
-        schemas.RevenueReport(period=k, total_revenue=float(v["revenue"]), total_sales=v["sales"], total_items_sold=v["items"])
-        for k, v in sorted(months.items(), reverse=True)
+        for row in rows
     ]
 
 
