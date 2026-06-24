@@ -97,7 +97,7 @@ def _route(levels: list[str], phone: str, db: Session) -> str:
             qty = int(levels[2])
         except ValueError:
             return "END Invalid quantity. Please enter a number."
-        return _record_sale(drug, qty, db)
+        return _record_sale(drug, qty, phone, db)
 
     return "END Invalid input. Please try again."
 
@@ -175,8 +175,12 @@ def _sale_drug_menu(db: Session) -> str:
     return "\n".join(lines)
 
 
-def _record_sale(drug: models.Drug, qty: int, db: Session) -> str:
-    """Perform FIFO deduction and record the sale."""
+def _record_sale(drug: models.Drug, qty: int, phone: str, db: Session) -> str:
+    """Perform FIFO deduction and record the sale.
+
+    Resolves the acting user by matching `phoneNumber` from the USSD session
+    to `users.phone`. Falls back to the first admin if no match is found.
+    """
     batches = (
         db.query(models.Batch)
         .filter(models.Batch.drug_id == drug.id, models.Batch.quantity > 0)
@@ -186,6 +190,14 @@ def _record_sale(drug: models.Drug, qty: int, db: Session) -> str:
     total_available = sum(b.quantity for b in batches)
     if total_available < qty:
         return f"END Insufficient stock for {drug.name}.\nAvailable: {total_available} {drug.unit}(s)."
+
+    # ── Resolve acting user from phone number ──────────────────────────────────
+    actor = db.query(models.User).filter(models.User.phone == phone).first()
+    if not actor:
+        # Fallback: use first admin as recorder
+        actor = db.query(models.User).filter(models.User.role == models.RoleEnum.admin).first()
+    if not actor:
+        return "END Sale failed: no user account found for this phone and no admin configured."
 
     # FIFO deduction
     from decimal import Decimal
@@ -202,14 +214,8 @@ def _record_sale(drug: models.Drug, qty: int, db: Session) -> str:
         total_price += Decimal(str(batch.selling_price)) * deduct
         allocations.append({"batch": batch, "deducted": deduct})
 
-    # Create sale record under a "USSD" system user if no real user context
-    # Use the first admin as the recorder
-    admin = db.query(models.User).filter(models.User.role == models.RoleEnum.admin).first()
-    if not admin:
-        return "END Sale failed: no admin user configured."
-
     sale = models.Sale(
-        user_id=admin.id,
+        user_id=actor.id,
         drug_id=drug.id,
         total_quantity=qty,
         total_price=total_price,
@@ -223,6 +229,16 @@ def _record_sale(drug: models.Drug, qty: int, db: Session) -> str:
             batch_id=alloc["batch"].id,
             quantity_deducted=alloc["deducted"],
         ))
+
+    from ..audit import log_activity
+    log_activity(db, actor.id, "CREATE", "Sale", sale.id, {
+        "source": "USSD",
+        "phone": phone,
+        "drug_id": drug.id,
+        "total_quantity": qty,
+        "total_price": str(total_price),
+        "allocations": [{"batch_id": a["batch"].id, "qty": a["deducted"]} for a in allocations],
+    })
 
     db.commit()
     return (
