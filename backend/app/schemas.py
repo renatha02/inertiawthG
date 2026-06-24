@@ -136,6 +136,7 @@ class BatchUpdate(BaseModel):
     buying_price: Optional[float] = None
     selling_price: Optional[float] = None
     expiry_date: Optional[date] = None
+    manufacture_date: Optional[date] = None
 
 class BatchOut(BaseModel):
     id: int

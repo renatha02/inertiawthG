@@ -96,6 +96,22 @@ def delete_batch(
     batch = db.query(models.Batch).filter(models.Batch.id == batch_id).first()
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
+
+    # Prevent hard-delete when sales records reference this batch
+    has_allocations = (
+        db.query(models.SaleBatchAllocation)
+        .filter(models.SaleBatchAllocation.batch_id == batch_id)
+        .first()
+    )
+    if has_allocations:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Cannot delete batch: it has existing sale records linked to it. "
+                "Set its quantity to 0 to retire it instead of deleting."
+            ),
+        )
+
     log_activity(db, current_user.id, "DELETE", "Batch", batch_id, {"batch_number": batch.batch_number})
     db.delete(batch)
     db.commit()

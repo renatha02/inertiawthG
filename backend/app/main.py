@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from apscheduler.schedulers.background import BackgroundScheduler
 from . import models
 from .database import engine
-from .routers import auth, drugs, batches, sales, alerts, suppliers, dashboard, ussd, users, adjustments, reports
+from .routers import auth, drugs, batches, sales, alerts, suppliers, dashboard, ussd, users, adjustments, reports, logs
 from .scheduler import check_expiry_and_low_stock
 import logging
 
@@ -86,7 +86,8 @@ app.include_router(alerts.router,    prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(ussd.router,      prefix="/api")
 app.include_router(adjustments.router, prefix="/api")
-app.include_router(reports.router,    prefix="/api")
+app.include_router(reports.router,     prefix="/api")
+app.include_router(logs.router,        prefix="/api")
 
 
 @app.get("/", tags=["Health"])

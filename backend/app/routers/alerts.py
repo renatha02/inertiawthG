@@ -39,3 +39,31 @@ def mark_alert_read(
     db.commit()
     db.refresh(alert)
     return alert
+
+
+@router.patch("/mark-all-read")
+def mark_all_alerts_read(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    """Mark every unread alert as read in a single operation."""
+    updated = (
+        db.query(models.Alert)
+        .filter(models.Alert.status == models.AlertStatusEnum.unread)
+        .update({"status": models.AlertStatusEnum.read}, synchronize_session="fetch")
+    )
+    db.commit()
+    return {"message": f"{updated} alert(s) marked as read."}
+
+
+@router.get("/{alert_id}", response_model=schemas.AlertOut)
+def get_alert(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    """Fetch a single alert by ID."""
+    alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
