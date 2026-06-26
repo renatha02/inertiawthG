@@ -1,134 +1,252 @@
-// App.jsx - Main entry component coordinating tab states and core data variables.
-// Orchestrates reactivity between the inventory list, sales manager, and USSD simulators.
-
-import React, { useState } from 'react'; // Import React library and useState hook.
-import Navbar from './components/Navbar'; // Import Sidebar navigation component.
-import Dashboard from './components/Dashboard'; // Import Dashboard component.
-import InventoryList from './components/InventoryList'; // Import Inventory list component.
-import SalesManager from './components/SalesManager'; // Import Sales logs manager component.
-import UssdSimulator from './components/UssdSimulator'; // Import mobile USSD terminal component.
-import SmsLog from './components/SmsLog'; // Import Africa's Talking SMS log console component.
-
-// Import initial database seeds from mock data file.
-import { initialInventory, initialSales, initialSmsAlerts } from './data/mockData';
+// App.jsx - Main entry component coordinating API state, authentication, and UI views.
+import React, { useEffect, useState } from 'react';
+import Navbar from './components/Navbar';
+import Dashboard from './components/Dashboard';
+import InventoryList from './components/InventoryList';
+import SalesManager from './components/SalesManager';
+import UssdSimulator from './components/UssdSimulator';
+import SmsLog from './components/SmsLog';
+import Login from './components/Login';
+import {
+  login as apiLogin,
+  getMe,
+  fetchDrugs,
+  fetchBatches,
+  fetchSales,
+  fetchSuppliers,
+  fetchAlerts,
+  fetchDashboardStats,
+  setStoredAccessToken,
+  clearStoredAccessToken,
+  createSale,
+} from './api';
 
 export default function App() {
-  
-  // 1. STATE INITIALIZATION
-  // Tracks active sidebar panel selection ('dashboard', 'inventory', 'sales', 'simulator').
   const [activeTab, setActiveTab] = useState('dashboard');
-  
-  // Array representing the database of pharmaceutical stock batches.
-  const [inventory, setInventory] = useState(initialInventory);
-  
-  // Array representing logged pharmacy counter transaction receipts.
-  const [sales, setSales] = useState(initialSales);
-  
-  // Array representing sent SMS logs via simulated Africa's Talking API.
-  const [smsAlerts, setSmsAlerts] = useState(initialSmsAlerts);
+  const [inventory, setInventory] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [smsAlerts, setSmsAlerts] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // System benchmark date (2026-06-23).
-  const currentDate = new Date('2026-06-23');
-
-  // 2. HELPER FUNCTIONS AND SYSTEM BROADCASTS
-  // Triggered from subcomponents when warning states or quick sales occur.
-  const triggerSmsAlert = (recipient, message) => {
-    // Generate unique SMS message code.
-    const newSmsId = `SMS-${Math.floor(100 + Math.random() * 900)}`;
-    
-    const newSms = {
-      id: newSmsId,
-      recipient: recipient,
-      message: message,
-      timestamp: new Date().toISOString(), // Log dispatch time.
-      status: "Delivered" // Simulating SMS success dispatch.
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        const profile = await getMe();
+        setUser(profile);
+        await loadAllData();
+      } catch (err) {
+        clearStoredAccessToken();
+      } finally {
+        setLoading(false);
+      }
     };
+    initialize();
+  }, []);
 
-    // Prepend new SMS alert to the SMS state list.
-    setSmsAlerts(prev => [newSms, ...prev]);
+  const buildInventory = (batches, drugs, suppliers) => {
+    const drugMap = Object.fromEntries(drugs.map((drug) => [drug.id, drug]));
+    const supplierMap = Object.fromEntries(suppliers.map((supplier) => [supplier.id, supplier]));
+    return batches.map((batch) => {
+      const drug = drugMap[batch.drug_id] || {};
+      const supplier = supplierMap[batch.supplier_id] || {};
+      return {
+        id: batch.id,
+        drugId: batch.drug_id,
+        supplierId: batch.supplier_id,
+        name: drug.name || 'Unknown Drug',
+        category: drug.category || 'General',
+        batchNumber: batch.batch_number,
+        quantity: batch.quantity,
+        lowStockThreshold: drug.reorder_level ?? 0,
+        unitPrice: Number(batch.selling_price ?? 0),
+        expiryDate: batch.expiry_date,
+        supplier: supplier.name || 'Unknown Supplier',
+        description: drug.category ? `Category: ${drug.category}` : '',
+      };
+    });
   };
 
-  // 3. NAVBAR BADGE ALERTS CALCULATION
-  // Counts total active warning conditions across the entire pharmacy inventory:
-  // - Already expired items.
-  // - Low stock levels.
-  // - Items expiring within 60 days.
+  const buildSales = (salesList, drugs) => {
+    const drugMap = Object.fromEntries(drugs.map((drug) => [drug.id, drug]));
+    return salesList.map((sale) => {
+      const drug = drugMap[sale.drug_id] || {};
+      const totalPrice = Number(sale.total_price ?? 0);
+      const quantity = sale.total_quantity ?? 0;
+      return {
+        saleId: String(sale.id),
+        timestamp: sale.created_at,
+        medicineId: sale.drug_id,
+        medicineName: drug.name || `Drug #${sale.drug_id}`,
+        quantity,
+        unitPrice: quantity > 0 ? totalPrice / quantity : 0,
+        totalCost: totalPrice,
+        paymentMethod: 'POS',
+      };
+    });
+  };
+
+  const buildSmsAlerts = (alertsData) => {
+    return alertsData.items.map((alert) => ({
+      id: String(alert.id),
+      recipient: 'Pharmacy Staff',
+      message: alert.message,
+      timestamp: alert.created_at,
+      status: alert.status === 'unread' ? 'Delivered' : 'Read',
+    }));
+  };
+
+  const loadAllData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [drugsRes, batchesRes, suppliersRes, salesRes, alertsRes, statsRes] = await Promise.all([
+        fetchDrugs(),
+        fetchBatches(),
+        fetchSuppliers(),
+        fetchSales(),
+        fetchAlerts('unread'),
+        fetchDashboardStats(),
+      ]);
+      setInventory(buildInventory(batchesRes.items, drugsRes.items, suppliersRes.items));
+      setSales(buildSales(salesRes.items, drugsRes.items));
+      setSmsAlerts(buildSmsAlerts(alertsRes));
+      setDashboardStats(statsRes);
+    } catch (err) {
+      setError(err.message ?? 'Unable to load data from backend');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async (email, password) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiLogin(email, password);
+      setStoredAccessToken(response.access_token);
+      setUser(response.user);
+      await loadAllData();
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearStoredAccessToken();
+    setUser(null);
+    setInventory([]);
+    setSales([]);
+    setSmsAlerts([]);
+    setDashboardStats(null);
+    setActiveTab('dashboard');
+  };
+
+  const handleCreateSale = async (drugId, totalQuantity) => {
+    setLoading(true);
+    try {
+      await createSale(drugId, totalQuantity);
+      await loadAllData();
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const triggerSmsAlert = (recipient, message) => {
+    const newSms = {
+      id: `SMS-${Math.floor(100 + Math.random() * 900)}`,
+      recipient,
+      message,
+      timestamp: new Date().toISOString(),
+      status: 'Delivered',
+    };
+    setSmsAlerts((prev) => [newSms, ...prev]);
+  };
+
   const calculateTotalAlerts = () => {
-    return inventory.filter(item => {
+    const currentDate = new Date();
+    return inventory.filter((item) => {
       const expDate = new Date(item.expiryDate);
       const isExpired = expDate < currentDate;
-      
-      const diffTime = expDate - currentDate;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = Math.ceil((expDate - currentDate) / (1000 * 60 * 60 * 24));
       const isNearExpiry = diffDays > 0 && diffDays <= 60;
-      
       const isLowStock = item.quantity <= item.lowStockThreshold;
-      
       return isExpired || isNearExpiry || isLowStock;
     }).length;
   };
 
-  // 4. ROUTER LAYOUT CONTROLLER
-  // Selects correct layout view depending on activeTab state.
+  if (loading && !user) {
+    return (
+      <div className="app-container">
+        <div className="loading-shell">Connecting to RENATHA backend...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="app-container">
+        <Login onLogin={handleLogin} error={error} />
+      </div>
+    );
+  }
+
   const renderTabContent = () => {
+    if (loading && user) {
+      return <div className="loading-shell">Refreshing backend data...</div>;
+    }
+
     switch (activeTab) {
-      
       case 'dashboard':
         return (
-          <Dashboard 
-            inventory={inventory} 
-            sales={sales} 
-            setActiveTab={setActiveTab} 
+          <Dashboard
+            inventory={inventory}
+            sales={sales}
+            dashboardStats={dashboardStats}
+            setActiveTab={setActiveTab}
           />
         );
-      
       case 'inventory':
         return (
-          <InventoryList 
-            inventory={inventory} 
-            setInventory={setInventory} 
-            triggerSmsAlert={triggerSmsAlert} 
+          <InventoryList
+            inventory={inventory}
+            setInventory={setInventory}
+            triggerSmsAlert={triggerSmsAlert}
           />
         );
-      
       case 'sales':
         return (
-          <SalesManager 
-            inventory={inventory} 
-            setInventory={setInventory} 
-            sales={sales} 
-            setSales={setSales} 
-            triggerSmsAlert={triggerSmsAlert} 
+          <SalesManager
+            inventory={inventory}
+            sales={sales}
+            setSales={setSales}
+            triggerSmsAlert={triggerSmsAlert}
+            onCreateSale={handleCreateSale}
           />
         );
-      
       case 'simulator':
         return (
-          // Simulated split grid containing the USSD mobile chassis alongside the live SMS broadcast log feed.
           <div className="simulators-grid">
-            
-            {/* Nokia simulator chassis panel */}
             <div className="glass-panel" style={{ padding: '24px' }}>
-              <UssdSimulator 
-                inventory={inventory} 
-                setInventory={setInventory} 
-                sales={sales} 
-                setSales={setSales} 
-                triggerSmsAlert={triggerSmsAlert} 
+              <UssdSimulator
+                inventory={inventory}
+                setInventory={setInventory}
+                sales={sales}
+                setSales={setSales}
+                triggerSmsAlert={triggerSmsAlert}
               />
             </div>
-            
-            {/* Africa's Talking API console output display */}
             <div className="glass-panel" style={{ padding: '24px' }}>
-              <SmsLog 
-                smsAlerts={smsAlerts} 
-                setSmsAlerts={setSmsAlerts} 
-              />
+              <SmsLog smsAlerts={smsAlerts} setSmsAlerts={setSmsAlerts} />
             </div>
-
           </div>
         );
-      
       default:
         return (
           <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -139,21 +257,22 @@ export default function App() {
   };
 
   return (
-    // Top-level container grid aligning sidebar Navbar and main display content.
     <div className="app-container">
-      
-      {/* Navigation panel sidebar passing state and warning badges */}
-      <Navbar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        alertCount={calculateTotalAlerts()} 
-      />
-
-      {/* Main scrolling viewport showing active subpage layouts */}
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} alertCount={calculateTotalAlerts()} />
       <main className="main-content">
+        <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+          <div>
+            <strong>Signed in as:</strong> {user.name} ({user.role})
+          </div>
+          <button className="btn-secondary" onClick={handleLogout}>Logout</button>
+        </div>
+        {error && (
+          <div className="alert-banner" style={{ marginBottom: '20px' }}>
+            {error}
+          </div>
+        )}
         {renderTabContent()}
       </main>
-
     </div>
   );
 }
