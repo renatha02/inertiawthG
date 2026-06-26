@@ -1,0 +1,964 @@
+/* ==========================================================================
+   DESIGN SYSTEM & CUSTOM VARIABLES (index.css)
+   ========================================================================== */
+
+/* Importing Google Fonts for premium typography */
+/* Outfit: Modern, geometric font for headlines, numbers, and stats cards */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+/* Inter: highly readable body font for tables, labels, and text logs */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Clean Medical Mint Theme: Aligned with clinical pharmacy branding */
+  --bg-primary: hsl(150, 20%, 96%);       /* Soft mint/grey workspace background */
+  --bg-secondary: hsl(0, 0%, 100%);       /* Clean solid white card panels */
+  --bg-tertiary: hsl(150, 25%, 90%);      /* Soft clinical green for hover states */
+  --border-color: hsl(150, 15%, 84%);     /* Thin clinical divider lines */
+  --border-glow: rgba(16, 185, 129, 0.12); /* Subtle green border glow */
+
+  /* Font Colors (Adjusted for high-readability in Light Mode) */
+  --text-primary: hsl(222, 40%, 15%);     /* Deep slate navy for main typography */
+  --text-secondary: hsl(215, 15%, 38%);   /* Charcoal grey for subtext and labels */
+  --text-muted: hsl(215, 12%, 58%);       /* Medium grey for placeholders */
+
+  /* Accent Colors (Clinical Pharmacy Emerald Green / Teal Theme) */
+  --accent-primary: hsl(160, 84%, 35%);  /* Healthy Emerald Green */
+  --accent-hover: hsl(160, 84%, 25%);    /* Darker green on hover */
+  --accent-glow: rgba(16, 185, 129, 0.35); /* Focus shadow glow */
+
+  /* Pharmacy Alert Severity Colors (HSL Tailored for Light Mode) */
+  --status-expired: hsl(354, 75%, 45%);   /* Crimson Red: Critical Expiry */
+  --status-expired-glow: rgba(220, 38, 38, 0.12);
+  
+  --status-warning: hsl(24, 90%, 46%);    /* Dark Orange: Low Stock warning */
+  --status-warning-glow: rgba(234, 88, 12, 0.12);
+  
+  --status-near: hsl(42, 90%, 40%);       /* Dark Amber: Near Expiry (1-2 months) */
+  --status-near-glow: rgba(202, 138, 4, 0.12);
+  
+  --status-safe: hsl(150, 75%, 35%);      /* Safe Clinical Green */
+  --status-safe-glow: rgba(5, 150, 105, 0.12);
+
+  /* Layout and Sizing Tokens */
+  --sidebar-width: 280px;                 /* Standard desktop sidebar width */
+  --radius-sm: 8px;                       /* Small buttons/inputs radius */
+  --radius-md: 12px;                      /* Large buttons/form radius */
+  --radius-lg: 20px;                      /* Card and panel borders */
+  --shadow-glow: 0 4px 20px 0 rgba(0, 0, 0, 0.05); /* Soft premium page shadows */
+  
+  /* Transition curve */
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   GLOBAL RESETS
+   ========================================================================== */
+* {
+  margin: 0;                              /* Reset margins */
+  padding: 0;                             /* Reset paddings */
+  box-sizing: border-box;                 /* Border-box box sizing model */
+  font-family: 'Inter', sans-serif;       /* Default fallback font */
+}
+
+body {
+  background-color: var(--bg-primary);    /* Set clean mint medical base background */
+  color: var(--text-primary);             /* Dark slate navy text color */
+  overflow-x: hidden;                     /* Stop side scrolling */
+  min-height: 100vh;                      /* Fill height */
+  line-height: 1.5;                       /* Line spacing */
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;                             /* Width of vertical scrollbar */
+  height: 8px;                            /* Height of horizontal scrollbar */
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);          /* Track background */
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);         /* Thumb color */
+  border-radius: var(--radius-sm);        /* Round scrollbar edges */
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-color);        /* Highlight thumb on hover */
+}
+
+/* ==========================================================================
+   GLASSMORPHISM & PREMIUM UTILITIES
+   ========================================================================== */
+.glass-panel {
+  background: var(--bg-secondary);        /* Clinical solid card panels */
+  border: 1px solid var(--border-color);  /* Soft borders */
+  border-radius: var(--radius-md);        /* Curved corners */
+  box-shadow: var(--shadow-glow);         /* Depth shadow */
+  transition: var(--transition-smooth);   /* Smooth hover effects */
+}
+
+.glass-panel:hover {
+  border-color: rgba(16, 185, 129, 0.2);  /* Subtle green glow on hover */
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.08); /* Increase shadow depth */
+}
+
+/* Interactive elements scaling on hover */
+.hover-scale {
+  transition: var(--transition-smooth);   /* Smooth transitions */
+}
+.hover-scale:hover {
+  transform: translateY(-3px);            /* Lift up slightly */
+}
+
+/* Accent gradient headers */
+.text-gradient {
+  background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent-primary) 100%);
+  -webkit-background-clip: text;          /* Clip gradient to text */
+  -webkit-text-fill-color: transparent;    /* Make background visible through text */
+}
+
+/* ==========================================================================
+   MAIN APP LAYOUT
+   ========================================================================== */
+.app-container {
+  display: flex;                          /* Flex layout side-by-side */
+  min-height: 100vh;                      /* Fill screen height */
+  width: 100vw;                           /* Screen width */
+  overflow: hidden;                       /* Limit scroll behavior to main panels */
+}
+
+.main-content {
+  flex: 1;                                /* Occupy remaining workspace width */
+  padding: 40px;                          /* Large layout breathing space */
+  overflow-y: auto;                       /* Independent scroll bar */
+  height: 100vh;                          /* Fix content viewport height */
+  display: flex;
+  flex-direction: column;
+  gap: 30px;                              /* Spacing between blocks */
+}
+
+/* ==========================================================================
+   SIDEBAR NAVIGATION
+   ========================================================================== */
+.sidebar {
+  width: var(--sidebar-width);            /* Fixed Width size */
+  background-color: var(--bg-secondary);  /* Solid sidebar back */
+  border-right: 1px solid var(--border-color); /* Separating line */
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px;                     /* Fit branding & list */
+  justify-content: space-between;         /* Space items and profile card */
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;                              /* Icon and text spacing */
+  padding: 10px;
+  margin-bottom: 40px;                    /* Separation from menu */
+}
+
+.brand-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-primary), hsl(150, 84%, 43%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-primary);
+  font-weight: bold;
+  font-size: 1.25rem;
+}
+
+.brand-text h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.brand-text span {
+  font-size: 0.7rem;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.sidebar-menu {
+  list-style: none;                       /* Remove bullets */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;                               /* Spacing between buttons */
+  flex-grow: 1;                           /* Stretch middle menu */
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;                              /* Icon-text gap */
+  padding: 14px 18px;                     /* Clicking comfort */
+  border-radius: var(--radius-md);        /* Rounded select style */
+  color: var(--text-secondary);           /* Unselected text gray */
+  cursor: pointer;                        /* Pointer pointer */
+  font-weight: 500;
+  transition: var(--transition-smooth);   /* Hover animate */
+  border: 1px solid transparent;
+}
+
+.menu-item:hover {
+  background: var(--bg-tertiary);         /* Hover highlight color */
+  color: var(--text-primary);             /* Brighter text */
+}
+
+.menu-item.active {
+  background: rgba(16, 185, 129, 0.08);   /* Clinical green active highlight tint */
+  color: var(--accent-primary);           /* Accent selected coloring */
+  border-color: rgba(16, 185, 129, 0.25);  /* Distinct green edge */
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.05); /* Soft back glow */
+}
+
+.sidebar-footer {
+  border-top: 1px solid var(--border-color); /* Bottom dividing line */
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: var(--accent-primary);
+}
+
+.profile-info h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.profile-info p {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   DASHBOARD / STATS CARDS
+   ========================================================================== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); /* Fit sizing */
+  gap: 20px;                              /* Grid separation */
+}
+
+.stat-card {
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Colored glowing bottom strips depending on state */
+.stat-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--accent-primary);      /* Default cyan glow */
+}
+
+.stat-card.critical::after {
+  background: var(--status-expired);      /* Red glow for expired stats */
+}
+.stat-card.warning::after {
+  background: var(--status-warning);      /* Orange glow for warnings */
+}
+.stat-card.near-exp::after {
+  background: var(--status-near);         /* Amber glow for near-expiry */
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.stat-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.stat-icon {
+  background: var(--bg-tertiary);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+/* ==========================================================================
+   DASHBOARD VISUAL CHARTS & ALERTS SECTION
+   ========================================================================== */
+.dashboard-details-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;         /* Large chart list, smaller sidebar list */
+  gap: 25px;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-details-grid {
+    grid-template-columns: 1fr;           /* Stack single column */
+  }
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.panel-header h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+/* custom dynamic SVG line/bar chart wrapper */
+.chart-container {
+  height: 250px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 10px 20px 20px;
+  border-bottom: 2px solid var(--border-color);
+  position: relative;
+}
+
+.chart-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.chart-bar {
+  width: 32px;
+  background: linear-gradient(180deg, var(--accent-primary) 0%, rgba(16, 185, 129, 0.1) 100%);
+  border-radius: 6px 6px 0 0;            /* Rounded tops */
+  position: relative;
+  transition: var(--transition-smooth);   /* Growing effect */
+}
+
+.chart-bar:hover {
+  filter: brightness(1.2);                /* Highlight bar on hover */
+  box-shadow: 0 0 15px var(--accent-glow); /* Glowing bar shadow */
+}
+
+.chart-bar-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.chart-bar-value {
+  position: absolute;
+  top: -24px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Expiry Timeline items */
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--border-color);
+}
+
+.timeline-item.expired {
+  border-left-color: var(--status-expired);
+}
+
+.timeline-item.near-expiry {
+  border-left-color: var(--status-near);
+}
+
+.timeline-marker {
+  font-size: 1.25rem;
+  margin-top: 2px;
+}
+
+.timeline-info h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.timeline-info p {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.timeline-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   INVENTORY PAGE & FILTERCONTROLS
+   ========================================================================== */
+.controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;                        /* Wrap on smaller widths */
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 250px;
+}
+
+.search-input-wrapper input {
+  width: 100%;
+  padding: 12px 18px 12px 45px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  outline: none;
+  transition: var(--transition-smooth);
+}
+
+.search-input-wrapper input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 12px var(--border-glow);
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.filters-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.filter-select:focus {
+  border-color: var(--accent-primary);
+}
+
+.btn-primary {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--bg-primary);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition-smooth);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 15px var(--accent-glow);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  padding: 12px 20px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.btn-secondary:hover {
+  background: var(--border-color);
+}
+
+/* ==========================================================================
+   TABLE GRID
+   ========================================================================== */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;                       /* Horizontal slider on mobile */
+  border-radius: var(--radius-md);
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;              /* Clean thin borders */
+  text-align: left;
+}
+
+.inventory-table th {
+  background: var(--bg-secondary);
+  padding: 16px 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.inventory-table td {
+  padding: 16px 20px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);        /* White cell backgrounds for light theme */
+}
+
+.inventory-table tr:hover td {
+  background: var(--bg-tertiary);         /* Highlighting row on focus */
+}
+
+/* Status Badges */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 30px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge.expired {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--status-expired);
+  border: 1px solid var(--status-expired);
+}
+
+.badge.near-expiry {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--status-near);
+  border: 1px solid var(--status-near);
+}
+
+.badge.low-stock {
+  background: rgba(249, 115, 22, 0.15);
+  color: var(--status-warning);
+  border: 1px solid var(--status-warning);
+}
+
+.badge.healthy {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--status-safe);
+  border: 1px solid var(--status-safe);
+}
+
+/* Actions cell alignment */
+.actions-cell {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 5px;
+  transition: var(--transition-smooth);
+}
+
+.btn-icon:hover {
+  color: var(--accent-primary);
+}
+
+.btn-icon.delete:hover {
+  color: var(--status-expired);
+}
+
+/* ==========================================================================
+   FORMS & POPUPS (Modal Overlay)
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.4);      /* Soft light-obscuring overlay backdrop */
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;                          /* Float on top of everything */
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 550px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+@media (max-width: 480px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group.full-width {
+  grid-column: span 2;
+}
+
+@media (max-width: 480px) {
+  .form-group.full-width {
+    grid-column: span 1;
+  }
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  outline: none;
+  font-size: 0.9rem;
+  transition: var(--transition-smooth);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--accent-primary);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+/* ==========================================================================
+   SALES MANAGER & INVOICES
+   ========================================================================== */
+.sales-layout {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;       /* Left form panel, right history receipt log */
+  gap: 25px;
+}
+
+@media (max-width: 900px) {
+  .sales-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.receipt-log {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.receipt-card {
+  padding: 16px;
+  border-left: 3px solid var(--accent-primary);
+}
+
+.receipt-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.receipt-body h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.receipt-body p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.receipt-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  border-top: 1px dashed var(--border-color);
+  padding-top: 8px;
+}
+
+.price-tag {
+  font-weight: bold;
+  color: var(--accent-primary);
+}
+
+/* ==========================================================================
+   USSD & SMS INTERACTIVE SIMULATORS
+   ========================================================================== */
+.simulators-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 30px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .simulators-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* USSD Phone chassis mockup */
+.phone-mockup {
+  width: 320px;
+  height: 600px;
+  background: #1e293b;                     /* Dark blue-gray chassis */
+  border-radius: 40px;
+  border: 8px solid #0f172a;               /* Inner bezel edge */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 40px rgba(0, 242, 254, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  margin: 0 auto;                          /* Centering */
+  position: relative;
+}
+
+.phone-speaker {
+  width: 60px;
+  height: 8px;
+  background: #0f172a;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+/* Simulated basic LCD cell phone screen */
+.phone-screen {
+  width: 100%;
+  height: 320px;
+  background: #8fa996;                    /* Nostalgic green LCD color */
+  border: 4px solid #334155;
+  border-radius: 10px;
+  padding: 15px;
+  color: #1c2e24;                         /* Dark green pixel text color */
+  font-family: 'Courier New', Courier, monospace; /* Monospaced basic layout font */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+}
+
+.screen-text {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  white-space: pre-wrap;                  /* Support pre-formatted menus */
+  font-weight: 700;
+}
+
+.screen-input-row {
+  display: flex;
+  border-top: 1px solid #1c2e24;          /* Screen divider */
+  padding-top: 8px;
+  align-items: center;
+}
+
+.screen-input-prompt {
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.screen-input-field {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Courier New', Courier, monospace;
+  color: #1c2e24;
+  font-size: 0.85rem;
+  font-weight: bold;
+  flex: 1;
+}
+
+/* Interactive phone dialer key buttons */
+.phone-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 10px;
+}
+
+.keypad-btn {
+  background: #334155;
+  border: none;
+  color: var(--text-primary);
+  border-radius: 50%;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.keypad-btn:hover {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+}
+
+.keypad-num {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.keypad-letters {
+  font-size: 0.55rem;
+  opacity: 0.6;
+  text-transform: uppercase;
+}
+
+.sms-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.sms-bubble {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--accent-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sms-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.sms-recipient {
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.sms-message {
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* ==========================================================================
+   ANIMATIONS & KEYFRAMES
+   ========================================================================== */
+@keyframes ring {
+  0% { transform: rotate(0deg); }
+  5% { transform: rotate(15deg); }
+  10% { transform: rotate(-15deg); }
+  15% { transform: rotate(10deg); }
+  20% { transform: rotate(-10deg); }
+  25% { transform: rotate(5deg); }
+  30% { transform: rotate(-5deg); }
+  35% { transform: rotate(0deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.ringing {
+  animation: ring 2s infinite ease-in-out;  /* Loop alert ringing */
+}
