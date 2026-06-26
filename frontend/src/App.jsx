@@ -19,6 +19,9 @@ import {
   setStoredAccessToken,
   clearStoredAccessToken,
   createSale,
+  createBatch,
+  updateBatch,
+  deleteBatch,
 } from './api';
 
 export default function App() {
@@ -26,6 +29,8 @@ export default function App() {
   const [inventory, setInventory] = useState([]);
   const [sales, setSales] = useState([]);
   const [smsAlerts, setSmsAlerts] = useState([]);
+  const [drugs, setDrugs] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -110,6 +115,8 @@ export default function App() {
         fetchAlerts('unread'),
         fetchDashboardStats(),
       ]);
+      setDrugs(drugsRes.items);
+      setSuppliers(suppliersRes.items);
       setInventory(buildInventory(batchesRes.items, drugsRes.items, suppliersRes.items));
       setSales(buildSales(salesRes.items, drugsRes.items));
       setSmsAlerts(buildSmsAlerts(alertsRes));
@@ -150,6 +157,42 @@ export default function App() {
     setLoading(true);
     try {
       await createSale(drugId, totalQuantity);
+      await loadAllData();
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateBatch = async (batchData) => {
+    setLoading(true);
+    try {
+      await createBatch(batchData);
+      await loadAllData();
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateBatch = async (batchId, batchData) => {
+    setLoading(true);
+    try {
+      await updateBatch(batchId, batchData);
+      await loadAllData();
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBatch = async (batchId) => {
+    setLoading(true);
+    try {
+      await deleteBatch(batchId);
       await loadAllData();
     } catch (err) {
       throw err;
@@ -218,6 +261,11 @@ export default function App() {
             inventory={inventory}
             setInventory={setInventory}
             triggerSmsAlert={triggerSmsAlert}
+            drugs={drugs}
+            suppliers={suppliers}
+            onCreateBatch={handleCreateBatch}
+            onUpdateBatch={handleUpdateBatch}
+            onDeleteBatch={handleDeleteBatch}
           />
         );
       case 'sales':

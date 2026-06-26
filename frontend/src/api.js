@@ -85,6 +85,18 @@ export function createSale(drug_id, total_quantity) {
   return request("/sales", { method: "POST", body: { drug_id, total_quantity } });
 }
 
+export function createBatch(batchData) {
+  return request("/batches", { method: "POST", body: batchData });
+}
+
+export function updateBatch(batchId, batchData) {
+  return request(`/batches/${batchId}`, { method: "PUT", body: batchData });
+}
+
+export function deleteBatch(batchId) {
+  return request(`/batches/${batchId}`, { method: "DELETE" });
+}
+
 export function fetchDashboardStats() {
   return request("/dashboard/stats");
 }
