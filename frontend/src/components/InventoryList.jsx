@@ -19,6 +19,8 @@ export default function InventoryList({
   setInventory,
   triggerSmsAlert,
   onCreateBatch,
+  onCreateDrug,
+  onCreateSupplier,
   onUpdateBatch,
   onDeleteBatch,
 }) {
@@ -27,6 +29,13 @@ export default function InventoryList({
   const [statusFilter, setStatusFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('Add');
+  const [showSetupPrompt, setShowSetupPrompt] = useState(false);
+  const [newDrugName, setNewDrugName] = useState('');
+  const [newDrugCategory, setNewDrugCategory] = useState('');
+  const [newDrugUnit, setNewDrugUnit] = useState('');
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierPhone, setNewSupplierPhone] = useState('');
+  const [newSupplierEmail, setNewSupplierEmail] = useState('');
   const [formData, setFormData] = useState({
     batchId: null,
     drugId: '',
@@ -82,6 +91,7 @@ export default function InventoryList({
   const handleOpenAddModal = () => {
     setModalMode('Add');
     setError(null);
+    setShowSetupPrompt(!drugs.length || !suppliers.length);
     setFormData({
       batchId: null,
       drugId: drugs?.[0]?.id ?? '',
@@ -153,6 +163,49 @@ export default function InventoryList({
     }
   };
 
+  const handleCreateReferenceData = async () => {
+    setError(null);
+
+    try {
+      if (!newDrugName.trim()) {
+        throw new Error('Please enter a drug name.');
+      }
+      if (!newSupplierName.trim()) {
+        throw new Error('Please enter a supplier name.');
+      }
+
+      const createdDrug = await onCreateDrug({
+        name: newDrugName.trim(),
+        category: newDrugCategory.trim() || 'General',
+        unit: newDrugUnit.trim() || 'units',
+        reorder_level: 10,
+      });
+
+      const createdSupplier = await onCreateSupplier({
+        name: newSupplierName.trim(),
+        contact_person: newSupplierName.trim(),
+        phone: newSupplierPhone.trim() || null,
+        email: newSupplierEmail.trim() || null,
+        address: null,
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        drugId: createdDrug?.id ?? prev.drugId,
+        supplierId: createdSupplier?.id ?? prev.supplierId,
+      }));
+      setShowSetupPrompt(false);
+      setNewDrugName('');
+      setNewDrugCategory('');
+      setNewDrugUnit('');
+      setNewSupplierName('');
+      setNewSupplierPhone('');
+      setNewSupplierEmail('');
+    } catch (err) {
+      setError(err.message || 'Unable to create drug or supplier.');
+    }
+  };
+
   const handleDeleteItem = async (item) => {
     if (!item) return;
     if (!window.confirm(`Delete batch ${item.batchNumber} for ${item.name}? This cannot be undone.`)) {
@@ -181,7 +234,7 @@ export default function InventoryList({
             Review batches, update stock, and add new entries backed by the API.
           </p>
         </div>
-        <button className="btn-primary" onClick={handleOpenAddModal} disabled={!drugs.length || !suppliers.length}>
+        <button className="btn-primary" onClick={handleOpenAddModal}>
           ✚ Register New Batch
         </button>
       </div>
@@ -227,7 +280,10 @@ export default function InventoryList({
       <div className="glass-panel table-responsive">
         {filteredInventory.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No batches found matching the active filters.
+            <p style={{ marginBottom: '12px' }}>No real stock records yet.</p>
+            <button className="btn-primary" onClick={handleOpenAddModal}>
+              Add the first batch
+            </button>
           </div>
         ) : (
           <table className="inventory-table">
@@ -290,68 +346,112 @@ export default function InventoryList({
             </div>
 
             <form onSubmit={handleSaveForm} className="form-grid" style={{ display: 'grid', gap: '16px', marginTop: '16px' }}>
-              <div className="form-group">
-                <label>Drug *</label>
-                <select name="drugId" value={formData.drugId} onChange={handleInputChange} required>
-                  {drugs.map((drug) => (
-                    <option key={drug.id} value={drug.id}>
-                      {drug.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {showSetupPrompt ? (
+                <div className="glass-panel" style={{ padding: '16px', display: 'grid', gap: '12px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                    Add the first real drug and supplier so the pharmacist can enter stock immediately.
+                  </p>
+                  <label>
+                    Drug name *
+                    <input value={newDrugName} onChange={(e) => setNewDrugName(e.target.value)} required />
+                  </label>
+                  <label>
+                    Drug category
+                    <input value={newDrugCategory} onChange={(e) => setNewDrugCategory(e.target.value)} placeholder="General" />
+                  </label>
+                  <label>
+                    Drug unit
+                    <input value={newDrugUnit} onChange={(e) => setNewDrugUnit(e.target.value)} placeholder="units" />
+                  </label>
+                  <label>
+                    Supplier name *
+                    <input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} required />
+                  </label>
+                  <label>
+                    Supplier phone
+                    <input value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} placeholder="+255..." />
+                  </label>
+                  <label>
+                    Supplier email
+                    <input type="email" value={newSupplierEmail} onChange={(e) => setNewSupplierEmail(e.target.value)} placeholder="supplier@example.com" />
+                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                    <button type="button" className="btn-secondary" onClick={() => setShowSetupPrompt(false)}>
+                      Skip setup
+                    </button>
+                    <button type="button" className="btn-primary" onClick={handleCreateReferenceData}>
+                      Save drug & supplier
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="form-group">
+                    <label>Drug *</label>
+                    <select name="drugId" value={formData.drugId} onChange={handleInputChange} required>
+                      {drugs.map((drug) => (
+                        <option key={drug.id} value={drug.id}>
+                          {drug.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="form-group">
-                <label>Supplier</label>
-                <select name="supplierId" value={formData.supplierId ?? ''} onChange={handleInputChange}>
-                  <option value="">None</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div className="form-group">
+                    <label>Supplier</label>
+                    <select name="supplierId" value={formData.supplierId ?? ''} onChange={handleInputChange}>
+                      <option value="">None</option>
+                      {suppliers.map((supplier) => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="form-group">
-                <label>Batch Number *</label>
-                <input name="batchNumber" value={formData.batchNumber} onChange={handleInputChange} required />
-              </div>
+                  <div className="form-group">
+                    <label>Batch Number *</label>
+                    <input name="batchNumber" value={formData.batchNumber} onChange={handleInputChange} required />
+                  </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <label>
-                  Quantity
-                  <input type="number" name="quantity" value={formData.quantity} onChange={handleInputChange} min="0" required />
-                </label>
-                <label>
-                  Buying Price
-                  <input type="number" name="buyingPrice" value={formData.buyingPrice} onChange={handleInputChange} min="0" step="0.01" required />
-                </label>
-              </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <label>
+                      Quantity
+                      <input type="number" name="quantity" value={formData.quantity} onChange={handleInputChange} min="0" required />
+                    </label>
+                    <label>
+                      Buying Price
+                      <input type="number" name="buyingPrice" value={formData.buyingPrice} onChange={handleInputChange} min="0" step="0.01" required />
+                    </label>
+                  </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <label>
-                  Selling Price
-                  <input type="number" name="sellingPrice" value={formData.sellingPrice} onChange={handleInputChange} min="0" step="0.01" required />
-                </label>
-                <label>
-                  Expiry Date *
-                  <input type="date" name="expiryDate" value={formData.expiryDate} onChange={handleInputChange} required />
-                </label>
-              </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <label>
+                      Selling Price
+                      <input type="number" name="sellingPrice" value={formData.sellingPrice} onChange={handleInputChange} min="0" step="0.01" required />
+                    </label>
+                    <label>
+                      Expiry Date *
+                      <input type="date" name="expiryDate" value={formData.expiryDate} onChange={handleInputChange} required />
+                    </label>
+                  </div>
 
-              <label>
-                Manufacturing Date
-                <input type="date" name="manufactureDate" value={formData.manufactureDate} onChange={handleInputChange} />
-              </label>
+                  <label>
+                    Manufacturing Date
+                    <input type="date" name="manufactureDate" value={formData.manufactureDate} onChange={handleInputChange} />
+                  </label>
+                </>
+              )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  {modalMode === 'Add' ? 'Create Batch' : 'Save Batch'}
-                </button>
+                {!showSetupPrompt && (
+                  <button type="submit" className="btn-primary">
+                    {modalMode === 'Add' ? 'Create Batch' : 'Save Batch'}
+                  </button>
+                )}
               </div>
             </form>
           </div>

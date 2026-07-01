@@ -89,6 +89,14 @@ export function createBatch(batchData) {
   return request("/batches", { method: "POST", body: batchData });
 }
 
+export function createDrug(drugData) {
+  return request("/drugs", { method: "POST", body: drugData });
+}
+
+export function createSupplier(supplierData) {
+  return request("/suppliers", { method: "POST", body: supplierData });
+}
+
 export function updateBatch(batchId, batchData) {
   return request(`/batches/${batchId}`, { method: "PUT", body: batchData });
 }

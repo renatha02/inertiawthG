@@ -20,6 +20,8 @@ import {
   clearStoredAccessToken,
   createSale,
   createBatch,
+  createDrug,
+  createSupplier,
   updateBatch,
   deleteBatch,
 } from './api';
@@ -177,6 +179,30 @@ export default function App() {
     }
   };
 
+  const handleCreateDrug = async (drugData) => {
+    setLoading(true);
+    try {
+      await createDrug(drugData);
+      await loadAllData();
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateSupplier = async (supplierData) => {
+    setLoading(true);
+    try {
+      await createSupplier(supplierData);
+      await loadAllData();
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdateBatch = async (batchId, batchData) => {
     setLoading(true);
     try {
@@ -264,6 +290,8 @@ export default function App() {
             drugs={drugs}
             suppliers={suppliers}
             onCreateBatch={handleCreateBatch}
+            onCreateDrug={handleCreateDrug}
+            onCreateSupplier={handleCreateSupplier}
             onUpdateBatch={handleUpdateBatch}
             onDeleteBatch={handleDeleteBatch}
           />
