@@ -26,6 +26,8 @@ import {
   deleteBatch,
 } from './api';
 
+const ACCESS_TOKEN_KEY = 'renatha_access_token';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [inventory, setInventory] = useState([]);
@@ -38,9 +40,21 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const unwrapItems = (response) => {
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return response?.items ?? [];
+  };
+
   useEffect(() => {
     const initialize = async () => {
       try {
+        const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY));
+        if (!hasToken) {
+          setLoading(false);
+          return;
+        }
         const profile = await getMe();
         setUser(profile);
         await loadAllData();
@@ -96,7 +110,7 @@ export default function App() {
   };
 
   const buildSmsAlerts = (alertsData) => {
-    return alertsData.items.map((alert) => ({
+    return unwrapItems(alertsData).map((alert) => ({
       id: String(alert.id),
       recipient: 'Pharmacy Staff',
       message: alert.message,
@@ -117,10 +131,14 @@ export default function App() {
         fetchAlerts('unread'),
         fetchDashboardStats(),
       ]);
-      setDrugs(drugsRes.items);
-      setSuppliers(suppliersRes.items);
-      setInventory(buildInventory(batchesRes.items, drugsRes.items, suppliersRes.items));
-      setSales(buildSales(salesRes.items, drugsRes.items));
+      const drugsList = unwrapItems(drugsRes);
+      const batchesList = unwrapItems(batchesRes);
+      const suppliersList = unwrapItems(suppliersRes);
+      const salesList = unwrapItems(salesRes);
+      setDrugs(drugsList);
+      setSuppliers(suppliersList);
+      setInventory(buildInventory(batchesList, drugsList, suppliersList));
+      setSales(buildSales(salesList, drugsList));
       setSmsAlerts(buildSmsAlerts(alertsRes));
       setDashboardStats(statsRes);
     } catch (err) {
@@ -158,8 +176,9 @@ export default function App() {
   const handleCreateSale = async (drugId, totalQuantity) => {
     setLoading(true);
     try {
-      await createSale(drugId, totalQuantity);
+      const sale = await createSale(drugId, totalQuantity);
       await loadAllData();
+      return sale;
     } catch (err) {
       throw err;
     } finally {
@@ -301,7 +320,6 @@ export default function App() {
           <SalesManager
             inventory={inventory}
             sales={sales}
-            setSales={setSales}
             triggerSmsAlert={triggerSmsAlert}
             onCreateSale={handleCreateSale}
           />

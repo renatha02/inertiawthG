@@ -17,7 +17,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 PASSWORD_RESET_EXPIRE_HOURS = 1
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt has compatibility problems in this environment, so use a stable
+# PBKDF2-based scheme for local/dev authentication.
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 bearer_scheme = HTTPBearer()
 
 

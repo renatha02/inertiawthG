@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 
-export default function SalesManager({ inventory, sales, setSales, triggerSmsAlert, onCreateSale }) {
+export default function SalesManager({ inventory, sales, triggerSmsAlert, onCreateSale }) {
   const [selectedMedId, setSelectedMedId] = useState('');
   const [saleQuantity, setSaleQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
@@ -32,61 +32,21 @@ export default function SalesManager({ inventory, sales, setSales, triggerSmsAle
       return;
     }
 
-    if (onCreateSale) {
-      setSubmitting(true);
-      try {
-        await onCreateSale(selectedMed.drugId ?? selectedMed.id, saleQuantity);
-        triggerSmsAlert(
-          'Point-of-Sale',
-          `Sale of ${saleQuantity} ${selectedMed.name} recorded successfully.`
-        );
-        setSelectedMedId('');
-        setSaleQuantity(1);
-        setPaymentMethod('Cash');
-      } catch (err) {
-        setError(err.message || 'Sale creation failed.');
-      } finally {
-        setSubmitting(false);
-      }
-      return;
+    setSubmitting(true);
+    try {
+      await onCreateSale(selectedMed.drugId ?? selectedMed.id, saleQuantity);
+      triggerSmsAlert(
+        'Point-of-Sale',
+        `Sale of ${saleQuantity} ${selectedMed.name} recorded successfully.`
+      );
+      setSelectedMedId('');
+      setSaleQuantity(1);
+      setPaymentMethod('Cash');
+    } catch (err) {
+      setError(err.message || 'Sale creation failed.');
+    } finally {
+      setSubmitting(false);
     }
-
-    const newSaleId = `SAL-90${sales.length + 1}`;
-    const newSale = {
-      saleId: newSaleId,
-      timestamp: currentDate.toISOString(),
-      medicineId: selectedMed.id,
-      medicineName: selectedMed.name,
-      quantity: parseInt(saleQuantity, 10),
-      unitPrice: selectedMed.unitPrice,
-      totalCost,
-      paymentMethod,
-    };
-
-    const updatedInventory = inventory.map((item) => {
-      if (item.id === selectedMed.id) {
-        const newQty = item.quantity - parseInt(saleQuantity, 10);
-        if (newQty <= item.lowStockThreshold) {
-          triggerSmsAlert(
-            'Store Manager',
-            `WARNING: ${item.name} stock dropped to ${newQty} units (threshold ${item.lowStockThreshold}).`
-          );
-        }
-        return { ...item, quantity: newQty };
-      }
-      return item;
-    });
-
-    setSales([newSale, ...sales]);
-    triggerSmsAlert(
-      'Point-of-Sale',
-      `Sale of ${saleQuantity} ${selectedMed.name} recorded successfully.`
-    );
-    setSelectedMedId('');
-    setSaleQuantity(1);
-    setPaymentMethod('Cash');
-    // Since inventory is owned by App, this fallback path leaves the backend out of sync.
-    // For a connected experience, use onCreateSale() from App.
   };
 
   return (

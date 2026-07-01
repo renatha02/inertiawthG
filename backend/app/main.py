@@ -6,6 +6,8 @@ from fastapi.exceptions import RequestValidationError
 from apscheduler.schedulers.background import BackgroundScheduler
 from . import models
 from .database import engine
+from .database import SessionLocal
+from .seed import seed_database
 from .routers import auth, drugs, batches, sales, alerts, suppliers, dashboard, ussd, users, adjustments, reports, logs
 from .scheduler import check_expiry_and_low_stock
 import logging
@@ -22,6 +24,14 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start the daily alert scheduler on startup, shut it down on exit."""
+    db = SessionLocal()
+    try:
+        counts = seed_database(db)
+        if any(counts.values()):
+            logging.info("Seeded initial data: %s", counts)
+    finally:
+        db.close()
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(check_expiry_and_low_stock, "cron", hour=7, minute=0)
     scheduler.start()

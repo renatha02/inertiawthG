@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 
 export default function Login({ onLogin, error }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@renatha.com');
+  const [password, setPassword] = useState('Admin123!');
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState(null);
 
@@ -32,6 +32,9 @@ export default function Login({ onLogin, error }) {
         <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
           Sign in to manage inventory, sales, alerts, and USSD operations.
         </p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
+          Seeded demo login: <code>admin@renatha.com</code> / <code>Admin123!</code>
+        </p>
 
         {(error || localError) && (
           <div className="alert-banner" style={{ marginBottom: '16px' }}>
@@ -47,6 +50,7 @@ export default function Login({ onLogin, error }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@example.com"
+              autoComplete="email"
               required
             />
           </label>
@@ -58,6 +62,7 @@ export default function Login({ onLogin, error }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
+              autoComplete="current-password"
               required
             />
           </label>
